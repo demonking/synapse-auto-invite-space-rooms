@@ -22,7 +22,14 @@ from synapse.http.servlet import (
     parse_strings_from_args,
 )
 
+import json
+
+import logging
+logger = logging.getLogger(__name__)
+
 import requests
+
+import traceback
 
 class InviteSpaceRooms:
     def __init__(self, config: Dict[str, Any], api: ModuleApi):
@@ -53,27 +60,49 @@ class InviteSpaceRooms:
             and self._api.is_mine(event.state_key)
         ):
             #
-            room_id = event.room_id
+            logger.info("Event.type = %s,event.state_key=%s,event.room_id=%s",event.type,event.state_key,event.room_id)
+            room_id = "!amPfLyNnQCdeGbFgMm:matrix.local" #event.room_id
             requester = create_requester('@admin:'+self.server_name, "syt_YWRtaW4_LQSDuXTmsrLjeegTeohm_3MPJch")
             admin = UserID.from_string('@admin:'+self.server_name)
             admin_requester = create_requester(
                 admin, authenticated_entity=requester.authenticated_entity
             )
-
-
-            rooms = await self._room_member_handler._room_summary_handler.get_room_hierarchy(
-                requester,
-                room_id,
-                suggested_only=False,
-                max_depth=None,
-                limit=None,
-                from_token=parse_string(request, "from"),
+            event_dict = event.get_dict()
+            logger.info(event_dict)
+            new_event_content = await self._api.http_client.post_json_get_json(
+                uri="https://demo.expo.local/test", post_json=event_dict,
             )
+            try:
+                # https://github.com/matrix-org/synapse/blob/develop/synapse/handlers/room_summary.py#L257
+                room_summary_handler =self._homeserver.get_room_summary_handler()
+                logger.info("Request hierarchy for room_id =%s",room_id)
+                rooms = await room_summary_handler.get_room_hierarchy(
+                    admin_requester,
+                    room_id,
+                    suggested_only=False,
+                    max_depth=1,
+                    limit=None,
+                )
+                #wenn keine rooms da, dann falsche Zugriff oder es gibt keine, sollte aber nicht möglich sein!
+                if 'rooms' not in rooms:
+                    logger.info('NO ROOMS')
+                    return None
 
-            # Make the user join the room.
-            await self._api.update_room_membership(
-                sender=event.state_key,
-                target=event.state_key,
-                room_id=event.room_id,
-                new_membership="invite",
-            )
+                for room in rooms['rooms'] :
+                    if 'room_type' in room and room['room_type'] == 'm.space':
+                        continue
+
+                    logger.info("RoomiD = %s, roomName = %s",room['room_id'],room['name'])
+
+                    # Make the user join the room.
+                    #await self._api.update_room_membership(
+                    #    sender=event.state_key,
+                    #    target=event.state_key,
+                    #    room_id=event.room_id,
+                    #    new_membership="invite",
+                    #)
+            except Exception as e:
+                logger.info(traceback.format_exc())
+                return None;
+
+
