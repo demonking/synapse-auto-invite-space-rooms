@@ -55,20 +55,6 @@ class InviteSpaceRooms:
         self._api.register_third_party_rules_callbacks(
             on_new_event=self.on_invite_event,
         )
-        
-        self._api.register_third_party_rules_callbacks(
-            on_new_event=self.on_leave_event,
-        )
-        self._api.register_spam_checker_callbacks(
-            check_event_for_spam=self.check_event_for_spam,
-        )
-
-    async def check_event_for_spam(self, event: EventBase) -> Union[bool, str] :
-        logger.info(event.get_dict())
-        if event.type == 'user.kick' :
-            return False
-        return True
-
 
     def get_event_information(self, event : EventBase): 
         values = dict()
@@ -169,7 +155,7 @@ class InviteSpaceRooms:
         if (
             event.type == "m.room.member"
             and event.is_state()
-            and event.membership == "leave"
+            and event.membership == "invite"
             and self._api.is_mine(event.state_key)
             and is_space == True
         ):
