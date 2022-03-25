@@ -190,6 +190,11 @@ class InviteSpaceRooms:
 
                 room_ids = await self._store.get_rooms_for_user(event.state_key)
                 user_room_list = list(room_ids)
+                user_id = event.state_key
+                await self._store.set_ratelimit_for_user(
+                    user_id, 0, 0
+                )
+                ratelimit = await self._store.get_ratelimit_for_user(user_id)
                 for room in rooms['rooms'] :
                     if 'room_type' in room and room['room_type'] == 'm.space':
                         continue
