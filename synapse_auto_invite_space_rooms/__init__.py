@@ -119,8 +119,8 @@ class InviteSpaceRooms:
                 await self._store.set_ratelimit_for_user(
                     event.state_key, 0, 0
                 )
-                ratelimit = await self._store.get_ratelimit_for_user(event.state_key)
-                logger.info(ratelimit)
+                #ratelimit = await self._store.get_ratelimit_for_user(event.state_key)
+                #logger.info(ratelimit)
                 room_ids = await self._store.get_rooms_for_user(event.state_key)
                 user_room_list = list(room_ids)
                 for room in rooms['rooms'] :
