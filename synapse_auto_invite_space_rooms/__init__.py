@@ -48,8 +48,7 @@ class InviteSpaceRooms:
         self._homeserver = api._hs 
         self._room_member_handler = self._homeserver.get_room_member_handler()
         self._server_name  = self._homeserver.config.server.server_name
-        self._store = self._homeserver.get_datastore().main
-
+        self._store = self._homeserver.get_datastores().main
 
         # Register the callback.
         self._api.register_third_party_rules_callbacks(
