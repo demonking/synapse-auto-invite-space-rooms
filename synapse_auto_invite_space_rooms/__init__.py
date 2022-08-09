@@ -48,7 +48,7 @@ class InviteSpaceRooms:
         self._homeserver = api._hs 
         self._room_member_handler = self._homeserver.get_room_member_handler()
         self._server_name  = self._homeserver.config.server.server_name
-        self._store = self._homeserver.get_datastore()
+        self._store = self._homeserver.get_datastore().main
 
 
         # Register the callback.
@@ -105,17 +105,30 @@ class InviteSpaceRooms:
                 # https://github.com/matrix-org/synapse/blob/develop/synapse/handlers/room_summary.py#L257
                 room_summary_handler =self._homeserver.get_room_summary_handler()
                 logger.info("Request hierarchy for room_id =%s",room_id)
-                rooms = await room_summary_handler.get_room_hierarchy(
-                    admin_requester,
-                    room_id,
-                    suggested_only=False,
-                    max_depth=1,
-                    limit=None,
-                )
+                #rooms['rooms'] ist eine List<JsonDict>
+                rooms : List[JsonDict] = []
+                from_token=None
+                while True : 
+                    roomsList = await room_summary_handler.get_room_hierarchy(
+                        admin_requester,
+                        room_id,
+                        suggested_only=False,
+                        max_depth=1,
+                        limit=50,
+                        from_token=from_token,
+                    )
+                    # wenn es Räume im Space gibt,Inhalt ist List<JsonDict>
+                    if 'rooms' in roomsList:
+                        rooms = rooms + roomsList['rooms']
+                    #gibt es weitere Infos vom Request, dann gibt es ein next_batch,wenn es keines gibt, hören wir hier auf
+                    if 'next_batch' not in roomsList :
+                        break;
+                
                 #wenn keine rooms da, dann falsche Zugriff oder es gibt keine, sollte aber nicht möglich sein!
-                if 'rooms' not in rooms:
+                if not rooms:
                     logger.info('NO ROOMS')
                     return None
+
                 await self._store.set_ratelimit_for_user(
                     event.state_key, 0, 0
                 )
@@ -123,7 +136,7 @@ class InviteSpaceRooms:
                 #logger.info(ratelimit)
                 room_ids = await self._store.get_rooms_for_user(event.state_key)
                 user_room_list = list(room_ids)
-                for room in rooms['rooms'] :
+                for room in rooms:
                     if 'room_type' in room and room['room_type'] == 'm.space':
                         continue
 
